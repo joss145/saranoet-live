@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101310">
+  <meta name="description" content="Mira SaraNoet en vivo en Kick y Odysee.">
+  <title>SaraNoet Live</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0e0c; --panel:#141916; --line:#29332d; --muted:#9aa69e; --green:#53fc18; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at top,#172219 0,#0b0e0c 48rem); color:#f5f7f5; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .wrap { width:min(1440px,100%); margin:0 auto; padding:28px 22px 48px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:24px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .mark { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; background:var(--green); color:#071006; font-weight:950; font-size:19px; box-shadow:0 0 28px #53fc1830; }
+    h1 { margin:0; font-size:clamp(22px,3vw,32px); letter-spacing:.04em; }
+    .subtitle { margin:4px 0 0; color:var(--muted); font-size:13px; }
+    .live-pill { border:1px solid #31512b; color:#a9ff91; background:#132010; border-radius:999px; padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.08em; }
+    .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:start; }
+    .column { min-width:0; }
+    .section-head { display:flex; align-items:center; justify-content:space-between; margin:0 0 10px; }
+    .section-head h2 { margin:0; font-size:15px; letter-spacing:.12em; }
+    .platform { color:var(--green); font-size:11px; font-weight:800; }
+    .card { overflow:hidden; background:linear-gradient(180deg,#171e19,#111612); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px #0005; }
+    .player { width:100%; aspect-ratio:16/9; display:block; border:0; background:#050706; }
+    .chat-card { margin-top:14px; }
+    .chat-title { padding:13px 15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); font-size:13px; font-weight:750; }
+    .chat-title span:last-child { color:var(--muted); font-size:11px; font-weight:500; }
+    .chat-frame { display:block; width:100%; height:470px; border:0; background:#101411; }
+    .odysee-placeholder { aspect-ratio:16/9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:24px; text-align:center; background:radial-gradient(circle at 50% 40%,#2b2417,#101411 70%); }
+    .odysee-logo { font-size:30px; font-weight:900; letter-spacing:-.06em; color:#f7a928; }
+    .odysee-placeholder p { max-width:340px; margin:0; color:var(--muted); line-height:1.55; font-size:13px; }
+    .channel-link { display:inline-flex; align-items:center; justify-content:center; padding:10px 15px; border:1px solid #735222; border-radius:9px; color:#ffd18a; text-decoration:none; font-size:13px; font-weight:700; }
+    footer { margin-top:26px; text-align:center; color:#77837a; font-size:12px; }
+    @media (max-width:800px) { .wrap{padding:20px 14px 36px}.grid{grid-template-columns:1fr;gap:24px}.chat-frame{height:420px}header{align-items:flex-start}.live-pill{white-space:nowrap} }
+    @media (max-width:420px) { .mark{width:36px;height:36px}.subtitle{font-size:12px}.chat-frame{height:380px} }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <h1>SARANOET LIVE</h1>
+          <p class="subtitle">Dos comunidades, un mismo directo</p>
+        </div>
+      </div>
+      <div class="live-pill">● TRANSMISIONES</div>
+    </header>
+
+    <section class="grid" aria-label="Reproductores en vivo">
+      <div class="column">
+        <div class="section-head"><h2>KICK</h2><span class="platform">SARANOET</span></div>
+        <div class="card">
+          <iframe class="player" src="https://player.kick.com/saranoet" title="Reproductor de Kick de SaraNoet" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <section class="card chat-card" aria-label="Chat de Kick">
+          <div class="chat-title"><span>CHAT DE KICK</span><span>ChatEmbedByKickCX</span></div>
+          <iframe class="chat-frame" src="https://chat.kick.cx/embed/saranoet" title="Chat de Kick de SaraNoet" loading="lazy" allow="clipboard-write"></iframe>
+        </section>
+      </div>
+
+      <div class="column">
+        <div class="section-head"><h2>ODYSEE</h2><span class="platform">JOSMMAEL</span></div>
+        <div class="card odysee-placeholder">
+          <div class="odysee-logo">odysee</div>
+          <p>El canal de Odysee ya está enlazado. Añadiremos aquí el reproductor del directo cuando tengamos el código de inserción.</p>
+          <a class="channel-link" href="https://odysee.com/@josmmael:7" target="_blank" rel="noopener noreferrer">Visitar canal de Odysee ↗</a>
+        </div>
+      </div>
+    </section>
+    <footer>SaraNoet Live · Alojado en Vercel</footer>
+  </main>
+</body>
+</html>
