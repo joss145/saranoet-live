@@ -174,12 +174,102 @@ export default async function handler(req, res) {
       return page(res, 503, "Twitch autorizado, pero no guardado", "La autorización funcionó, pero Supabase no pudo guardar el token.", saveError.message);
     }
 
+    if (!process.env.TWITCH_EVENTSUB_SECRET) {
+      return page(
+        res,
+        200,
+        "¡Twitch conectado!",
+        `La cuenta @${validation.login} quedó autorizada y sus tokens se guardaron en Supabase.`,
+        "Falta configurar TWITCH_EVENTSUB_SECRET para activar la recepción de mensajes."
+      );
+    }
+
+    // Create an app access token because Twitch requires it for webhook subscriptions.
+    const appTokenResponse = await fetch("https://id.twitch.tv/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.TWITCH_CLIENT_ID,
+        client_secret: process.env.TWITCH_CLIENT_SECRET,
+        grant_type: "client_credentials"
+      })
+    });
+    const appTokenData = await appTokenResponse.json();
+
+    if (!appTokenResponse.ok || !appTokenData.access_token) {
+      return page(
+        res,
+        200,
+        "¡Twitch conectado!",
+        `La cuenta @${validation.login} quedó autorizada y guardada.`,
+        "No se pudo obtener el token de aplicación para activar la recepción. Vuelve a intentar la conexión más tarde."
+      );
+    }
+
+    const eventSubHeaders = {
+      "Client-Id": process.env.TWITCH_CLIENT_ID,
+      Authorization: `Bearer ${appTokenData.access_token}`,
+      "Content-Type": "application/json"
+    };
+    const subscriptionsResponse = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
+      headers: eventSubHeaders
+    });
+    const subscriptionsData = await subscriptionsResponse.json();
+
+    const existing = (subscriptionsData.data || []).find((item) =>
+      item.type === "channel.chat.message" &&
+      item.status === "enabled" &&
+      item.transport?.method === "webhook" &&
+      item.transport?.callback === "https://live.saranoet.stream/api/webhooks/twitch" &&
+      item.condition?.broadcaster_user_id === String(validation.user_id) &&
+      item.condition?.user_id === String(validation.user_id)
+    );
+
+    if (existing) {
+      return page(
+        res,
+        200,
+        "¡Twitch conectado y recepción activa!",
+        `La cuenta @${validation.login} está conectada y la recepción de mensajes ya está activa.`
+      );
+    }
+
+    const createSubscriptionResponse = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
+      method: "POST",
+      headers: eventSubHeaders,
+      body: JSON.stringify({
+        type: "channel.chat.message",
+        version: "1",
+        condition: {
+          broadcaster_user_id: String(validation.user_id),
+          user_id: String(validation.user_id)
+        },
+        transport: {
+          method: "webhook",
+          callback: "https://live.saranoet.stream/api/webhooks/twitch",
+          secret: process.env.TWITCH_EVENTSUB_SECRET
+        }
+      })
+    });
+    const createSubscriptionData = await createSubscriptionResponse.json();
+
+    if (!createSubscriptionResponse.ok) {
+      const reason = createSubscriptionData.message || createSubscriptionData.error || "Twitch rechazó la suscripción.";
+      return page(
+        res,
+        200,
+        "¡Twitch conectado, falta activar la recepción!",
+        `La cuenta @${validation.login} quedó guardada correctamente.`,
+        reason
+      );
+    }
+
     return page(
       res,
       200,
       "¡Twitch conectado!",
-      `La cuenta @${validation.login} quedó autorizada y sus tokens se guardaron en Supabase.`,
-      "Todavía falta activar la recepción y el envío de mensajes."
+      `La cuenta @${validation.login} quedó autorizada y la solicitud para recibir mensajes fue enviada a Twitch.`,
+      "Twitch está verificando el webhook. En unos momentos comprobaremos que la recepción quede activa."
     );
   } catch (error) {
     return page(
