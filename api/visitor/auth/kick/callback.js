@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     const expiresAt = token.expires_in ? new Date(Date.now() + Number(token.expires_in) * 1000).toISOString() : null;
     const { error } = await db.from("visitor_platform_tokens").upsert({ platform: "kick", session_id: sessionId, user_id: String(userId), username: String(username), access_token: token.access_token, refresh_token: token.refresh_token || null, expires_at: expiresAt }, { onConflict: "session_id" });
-    if (error) return page(res, 503, "No se pudo guardar", "Kick autorizó la cuenta, pero no se pudo guardar la conexión.");
+    if (error) return page(res, 503, "No se pudo guardar", "Error de Supabase (" + (error.code || "sin código") + "): " + String(error.message || "error desconocido").slice(0, 220));
     return page(res, 200, "¡Kick conectado!", "Tu cuenta @" + username + " quedó vinculada. Ya puedes volver a la página.");
   } catch (error) { return page(res, 500, "Error del servidor", "No se pudo completar la conexión. Inténtalo otra vez."); }
 }
