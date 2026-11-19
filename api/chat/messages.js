@@ -24,8 +24,6 @@ export default async function handler(req, res) {
 }
 
 
-import { createClient } from "@supabase/supabase-js";
-
 const recentSends = new Map();
 const WINDOW_MS = 2000;
 
