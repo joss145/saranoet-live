@@ -38,7 +38,7 @@ export default function handler(req, res) {
   }).toString();
 
   res.setHeader("Set-Cookie", [
-    `visitor_session=${sessionId}; Path=/api/visitor; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+    `visitor_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     `visitor_kick_state=${state}; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
     `visitor_kick_verifier=${verifier}; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
   ]);
