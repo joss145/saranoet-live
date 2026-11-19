@@ -14,6 +14,8 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).send("Method not allowed");
   const c = parseCookies(req.headers.cookie);
   const p = new URL(req.url, "https://live.saranoet.stream").searchParams;
+  const sessionId = c.visitor_session || "";
+  if (!/^[a-f0-9]{64}$/i.test(sessionId)) return page(res, 400, "Sesión no válida", "Vuelve a iniciar la conexión desde la página.");
   res.setHeader("Set-Cookie", "visitor_twitch_state=; Path=/api/visitor/auth/twitch; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
   if (p.get("error")) return page(res, 400, "Conexión cancelada", "No autorizaste Twitch.");
   if (!same(c.visitor_twitch_state, p.get("state"))) return page(res, 400, "Verificación fallida", "Vuelve a iniciar la conexión con Twitch.");
@@ -29,7 +31,7 @@ export default async function handler(req, res) {
     if (!validateResponse.ok || validation.client_id !== process.env.TWITCH_CLIENT_ID || !(validation.scopes || []).includes("user:write:chat")) return page(res, 403, "Permiso insuficiente", "Twitch no confirmó el permiso para escribir en el chat.");
     const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     const expiresAt = token.expires_in ? new Date(Date.now() + Number(token.expires_in) * 1000).toISOString() : null;
-    const { error } = await db.from("visitor_platform_tokens").upsert({ platform: "twitch", user_id: String(validation.user_id), username: String(validation.login), access_token: token.access_token, refresh_token: token.refresh_token || null, expires_at: expiresAt }, { onConflict: "platform,user_id" });
+    const { error } = await db.from("visitor_platform_tokens").upsert({ platform: "twitch", session_id: sessionId, user_id: String(validation.user_id), username: String(validation.login), access_token: token.access_token, refresh_token: token.refresh_token || null, expires_at: expiresAt }, { onConflict: "session_id" });
     if (error) return page(res, 503, "No se pudo guardar", "Twitch autorizó la cuenta, pero no se pudo guardar la conexión.");
     return page(res, 200, "¡Twitch conectado!", "Tu cuenta @" + validation.login + " quedó vinculada. Ya puedes volver a la página.");
   } catch (error) { return page(res, 500, "Error del servidor", "No se pudo completar la conexión. Inténtalo otra vez."); }
