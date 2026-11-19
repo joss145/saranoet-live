@@ -1,5 +1,5 @@
 // Environment and Supabase connectivity diagnostic for the SaraNoet chat bridge.
-import { supabase } from "./_lib/supabase.js";
+import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -26,25 +26,47 @@ export default async function handler(req, res) {
     });
   }
 
-  const { error } = await supabase
-    .from("platform_tokens")
-    .select("platform")
-    .limit(1);
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
+        }
+      }
+    );
 
-  if (error) {
+    const { error } = await supabase
+      .from("platform_tokens")
+      .select("platform")
+      .limit(1);
+
+    if (error) {
+      return res.status(503).json({
+        ok: false,
+        service: "saranoet-chat-bridge",
+        configuration: "ready",
+        database: "error",
+        database_error: error.message
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      service: "saranoet-chat-bridge",
+      configuration: "ready",
+      database: "connected"
+    });
+  } catch (error) {
     return res.status(503).json({
       ok: false,
       service: "saranoet-chat-bridge",
       configuration: "ready",
       database: "error",
-      database_error: error.message
+      database_error: error instanceof Error ? error.message : "Unknown Supabase connection error"
     });
   }
-
-  return res.status(200).json({
-    ok: true,
-    service: "saranoet-chat-bridge",
-    configuration: "ready",
-    database: "connected"
-  });
 }
