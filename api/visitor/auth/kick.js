@@ -2,6 +2,12 @@ import { createHash, randomBytes } from "node:crypto";
 
 const REDIRECT_URI = "https://live.saranoet.stream/api/visitor/auth/kick/callback";
 
+function readCookie(req, name) {
+  const header = req.headers.cookie || "";
+  const item = header.split(";").map((part) => part.trim()).find((part) => part.startsWith(name + "="));
+  return item ? decodeURIComponent(item.slice(name.length + 1)) : "";
+}
+
 export default function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -15,6 +21,10 @@ export default function handler(req, res) {
   const state = randomBytes(32).toString("hex");
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const existingSession = readCookie(req, "visitor_session");
+  const sessionId = /^[a-f0-9]{64}$/i.test(existingSession)
+    ? existingSession
+    : randomBytes(32).toString("hex");
 
   const authorizeUrl = new URL("https://id.kick.com/oauth/authorize");
   authorizeUrl.search = new URLSearchParams({
@@ -28,6 +38,7 @@ export default function handler(req, res) {
   }).toString();
 
   res.setHeader("Set-Cookie", [
+    `visitor_session=${sessionId}; Path=/api/visitor; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     `visitor_kick_state=${state}; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
     `visitor_kick_verifier=${verifier}; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
   ]);
