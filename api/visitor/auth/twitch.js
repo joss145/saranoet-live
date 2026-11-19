@@ -35,7 +35,7 @@ export default function handler(req, res) {
   }).toString();
 
   res.setHeader("Set-Cookie", [
-    `visitor_session=${sessionId}; Path=/api/visitor; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+    `visitor_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
     `visitor_twitch_state=${state}; Path=/api/visitor/auth/twitch; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
   ]);
   res.setHeader("Cache-Control", "no-store");
