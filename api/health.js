@@ -3,18 +3,21 @@ export default function handler(req, res) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  const configured = Boolean(
-    process.env.SUPABASE_URL &&
-    process.env.SUPABASE_SERVICE_ROLE_KEY &&
-    process.env.TWITCH_CLIENT_ID &&
-    process.env.TWITCH_CLIENT_SECRET &&
-    process.env.KICK_CLIENT_ID &&
-    process.env.KICK_CLIENT_SECRET
-  );
+  const required = [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "TWITCH_CLIENT_ID",
+    "TWITCH_CLIENT_SECRET",
+    "KICK_CLIENT_ID",
+    "KICK_CLIENT_SECRET"
+  ];
 
-  return res.status(configured ? 200 : 503).json({
-    ok: configured,
+  const missing = required.filter((name) => !process.env[name]);
+
+  return res.status(missing.length ? 503 : 200).json({
+    ok: missing.length === 0,
     service: "saranoet-chat-bridge",
-    configuration: configured ? "ready" : "missing_environment_variables"
+    configuration: missing.length === 0 ? "ready" : "missing_environment_variables",
+    missing
   });
 }
