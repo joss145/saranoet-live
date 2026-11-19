@@ -232,15 +232,16 @@
         flex-direction: column;
       }
 
-      /* CHAT DE TWITCH ANTES DEL STREAM */
-      .column:nth-child(1) .chat-card {
-        order: 1;
+      /* TWITCH: STREAM Y CHAT JUNTOS ARRIBA */
+      .column:nth-child(2) {
+        display: flex;
+        flex-direction: column;
       }
 
-      /* TITULO Y REPRODUCTOR KICK AL FINAL */
-      .column:nth-child(1) > .section-head,
-      .column:nth-child(1) > .card:not(.chat-card) {
-        order: 2;
+      /* KICK DEBAJO DE TWITCH */
+      .column:nth-child(1) {
+        display: flex;
+        flex-direction: column;
       }
 
       .chat-frame {
@@ -312,24 +313,6 @@
           </iframe>
         </div>
 
-        <!-- CHAT TWITCH -->
-        <section class="card chat-card" aria-label="Chat de Twitch">
-
-          <div class="chat-title">
-            <span>CHAT DE TWITCH</span>
-            <span>SaraNoet</span>
-          </div>
-
-          <iframe
-            class="chat-frame"
-            src="https://www.twitch.tv/embed/sarainoet/chat?parent=live.saranoet.stream&darkpopout"
-            title="Chat de Twitch de SaraNoet"
-            loading="lazy"
-            allow="clipboard-write">
-          </iframe>
-
-        </section>
-
       </div>
 
       <!-- COLUMNA TWITCH -->
@@ -351,6 +334,24 @@
           </iframe>
         </div>
 
+
+        <!-- CHAT TWITCH -->
+        <section class="card chat-card" aria-label="Chat de Twitch">
+
+          <div class="chat-title">
+            <span>CHAT DE TWITCH</span>
+            <span>SaraNoet</span>
+          </div>
+
+          <iframe
+            class="chat-frame"
+            src="https://www.twitch.tv/embed/sarainoet/chat?parent=live.saranoet.stream&darkpopout"
+            title="Chat de Twitch de SaraNoet"
+            loading="lazy"
+            allow="clipboard-write">
+          </iframe>
+
+        </section>
       </div>
 
     </section>
