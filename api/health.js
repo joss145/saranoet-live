@@ -1,3 +1,4 @@
+// Environment diagnostic endpoint for the SaraNoet chat bridge.
 export default function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
