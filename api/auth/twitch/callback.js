@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const REDIRECT_URI = "https://live.saranoet.stream/api/auth/twitch/callback";
 const EXPECTED_TWITCH_LOGIN = "sarainoet";
-const REQUIRED_SCOPES = ["user:read:chat", "user:write:chat"];
+const REQUIRED_SCOPES = ["user:read:chat", "user:write:chat", "user:bot", "channel:bot"];
 
 function parseCookies(header = "") {
   return Object.fromEntries(
@@ -131,7 +131,7 @@ export default async function handler(req, res) {
         res,
         403,
         "Faltan permisos de chat",
-        "Twitch no concedió todos los permisos necesarios. Vuelve a autorizar y acepta los permisos de lectura y escritura del chat.",
+        "Twitch no concedió todos los permisos necesarios. Vuelve a autorizar y acepta los permisos de lectura, escritura y conexión del bot al chat.",
         missingScopes.join(", ")
       );
     }
