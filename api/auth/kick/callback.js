@@ -224,12 +224,37 @@ export default async function handler(req, res) {
       return page(res, 503, "Kick autorizado, pero no guardado", "La autorización funcionó, pero Supabase no pudo guardar el token.", saveError.message);
     }
 
+    const subscriptionResponse = await fetch("https://api.kick.com/public/v1/events/subscriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        method: "webhook",
+        events: [{ name: "chat.message.sent", version: 1 }]
+      })
+    });
+    const subscriptionData = await readJson(subscriptionResponse);
+    const subscription = Array.isArray(subscriptionData.data) ? subscriptionData.data[0] : null;
+
+    if (!subscriptionResponse.ok || !subscription || subscription.error) {
+      const reason = subscription?.error || subscriptionData.message || "Kick no confirmó la suscripción al evento de chat.";
+      return page(
+        res,
+        200,
+        "¡Kick conectado, falta activar la recepción!",
+        `El canal @${channel.slug} quedó autorizado y guardado.`,
+        reason
+      );
+    }
+
     return page(
       res,
       200,
-      "¡Kick conectado!",
-      `El canal @${channel.slug} quedó autorizado y sus tokens se guardaron en Supabase.`,
-      "Todavía falta activar la recepción y el envío de mensajes."
+      "¡Kick conectado y recepción activada!",
+      `El canal @${channel.slug} quedó conectado y suscrito a los mensajes del chat.`,
+      "La suscripción chat.message.sent fue creada correctamente."
     );
   } catch (error) {
     return page(
