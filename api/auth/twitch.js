@@ -24,7 +24,7 @@ export default function handler(req, res) {
     client_id: process.env.TWITCH_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: "code",
-    scope: "user:read:chat user:write:chat",
+    scope: "user:read:chat user:write:chat user:bot channel:bot",
     state,
     force_verify: "true"
   }).toString();
