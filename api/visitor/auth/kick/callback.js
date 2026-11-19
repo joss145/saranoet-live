@@ -15,6 +15,8 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).send("Method not allowed");
   const c = parseCookies(req.headers.cookie);
   const p = new URL(req.url, "https://live.saranoet.stream").searchParams;
+  const sessionId = c.visitor_session || "";
+  if (!/^[a-f0-9]{64}$/i.test(sessionId)) return page(res, 400, "Sesión no válida", "Vuelve a iniciar la conexión desde la página.");
   res.setHeader("Set-Cookie", [
     "visitor_kick_state=; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
     "visitor_kick_verifier=; Path=/api/visitor/auth/kick; HttpOnly; Secure; SameSite=Lax; Max-Age=0"
@@ -42,7 +44,7 @@ export default async function handler(req, res) {
     if (!userResponse.ok || !userId || !username) return page(res, 502, "No se pudo verificar Kick", "Kick no devolvió los datos de la cuenta autorizada.");
     const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     const expiresAt = token.expires_in ? new Date(Date.now() + Number(token.expires_in) * 1000).toISOString() : null;
-    const { error } = await db.from("visitor_platform_tokens").upsert({ platform: "kick", user_id: String(userId), username: String(username), access_token: token.access_token, refresh_token: token.refresh_token || null, expires_at: expiresAt }, { onConflict: "platform,user_id" });
+    const { error } = await db.from("visitor_platform_tokens").upsert({ platform: "kick", session_id: sessionId, user_id: String(userId), username: String(username), access_token: token.access_token, refresh_token: token.refresh_token || null, expires_at: expiresAt }, { onConflict: "session_id" });
     if (error) return page(res, 503, "No se pudo guardar", "Kick autorizó la cuenta, pero no se pudo guardar la conexión.");
     return page(res, 200, "¡Kick conectado!", "Tu cuenta @" + username + " quedó vinculada. Ya puedes volver a la página.");
   } catch (error) { return page(res, 500, "Error del servidor", "No se pudo completar la conexión. Inténtalo otra vez."); }
