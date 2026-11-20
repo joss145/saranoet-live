@@ -21,11 +21,15 @@ export default async function handler(req, res) {
   }
 
   let connection = null;
-  const sessionId = parseCookies(req.headers.cookie).visitor_session || "";
-  if (/^[a-f0-9]{64}$/i.test(sessionId) && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  let pickerEmotes = { twitch: [], kick: [] };
+  let db = null;
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
+  }
+  const sessionId = parseCookies(req.headers.cookie).visitor_session || "";
+  if (db && /^[a-f0-9]{64}$/i.test(sessionId)) {
     const { data: visitor } = await db.from("visitor_platform_tokens")
       .select("platform,username,expires_at")
       .eq("session_id", sessionId)
@@ -34,8 +38,12 @@ export default async function handler(req, res) {
       connection = { platform: visitor.platform, username: visitor.username };
     }
   }
+  if (db) {
+    try { pickerEmotes = await loadPickerEmotes(db); }
+    catch (error) { console.error("Emote picker load failed:", error?.message || "unknown error"); }
+  }
 
-  return res.status(200).json({ messages: data || [], connection });
+  return res.status(200).json({ messages: data || [], connection, emotes: pickerEmotes });
 }
 
 
@@ -171,4 +179,87 @@ async function sendVisitorMessage(req, res) {
     console.error("Visitor chat send failed:", error?.message || "unknown error");
     return res.status(500).json({ ok: false, error: "No se pudo enviar el mensaje. Inténtalo de nuevo." });
   }
+}
+
+
+let cachedTwitchAppToken = "";
+let twitchTokenExpiresAt = 0;
+
+async function getTwitchAppToken() {
+  if (cachedTwitchAppToken && twitchTokenExpiresAt > Date.now() + 60000) return cachedTwitchAppToken;
+  if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) return "";
+  const params = new URLSearchParams({
+    client_id: process.env.TWITCH_CLIENT_ID,
+    client_secret: process.env.TWITCH_CLIENT_SECRET,
+    grant_type: "client_credentials"
+  });
+  const response = await fetch("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params
+  });
+  const result = await readJson(response);
+  if (!response.ok || !result.access_token) throw new Error("No se pudo obtener token de Twitch para emotes");
+  cachedTwitchAppToken = result.access_token;
+  twitchTokenExpiresAt = Date.now() + Number(result.expires_in || 3600) * 1000;
+  return cachedTwitchAppToken;
+}
+
+function normalize7tvEmotes(payload) {
+  const set = payload?.emote_set || payload?.data?.emote_set || payload?.emoteSet || payload;
+  const emotes = Array.isArray(set?.emotes) ? set.emotes : [];
+  return emotes.map((emote) => {
+    const host = emote.data?.host || emote.host;
+    const files = host?.files || [];
+    const preferred = files.find((file) => file.name === "2x.webp") ||
+      files.find((file) => file.name === "1x.webp") || files[0];
+    let image = "";
+    if (host?.url) {
+      const base = host.url.startsWith("//") ? "https:" + host.url : host.url;
+      image = base.replace(/\/$/, "") + "/" + (preferred?.name || "2x.webp");
+    }
+    return { name: emote.name || emote.data?.name || "", url: image, platform: "7tv" };
+  }).filter((emote) => emote.name && emote.url);
+}
+
+async function loadPickerEmotes(db) {
+  const result = { twitch: [], kick: [] };
+  const { data: twitchChannel } = await db.from("platform_tokens")
+    .select("user_id").eq("platform", "twitch").maybeSingle();
+  const { data: kickChannel } = await db.from("platform_tokens")
+    .select("user_id").eq("platform", "kick").maybeSingle();
+
+  const twitchToken = await getTwitchAppToken();
+  if (twitchToken) {
+    const headers = {
+      "Authorization": "Bearer " + twitchToken,
+      "Client-Id": process.env.TWITCH_CLIENT_ID
+    };
+    const requests = [
+      fetch("https://api.twitch.tv/helix/chat/emotes/global", { headers }),
+      twitchChannel?.user_id
+        ? fetch("https://api.twitch.tv/helix/chat/emotes?broadcaster_id=" + encodeURIComponent(twitchChannel.user_id), { headers })
+        : Promise.resolve(null)
+    ];
+    const [globalResponse, channelResponse] = await Promise.all(requests);
+    for (const response of [globalResponse, channelResponse]) {
+      if (!response?.ok) continue;
+      const body = await readJson(response);
+      for (const emote of body.data || []) {
+        const url = emote.images?.url_2x || emote.images?.url_1x;
+        if (emote.name && url) result.twitch.push({ name: emote.name, url, platform: "twitch" });
+      }
+    }
+    result.twitch = Array.from(new Map(result.twitch.map((item) => [item.name, item])).values());
+  }
+
+  const kickSets = [];
+  const global7tv = await fetch("https://7tv.io/v3/emote-sets/global");
+  if (global7tv.ok) kickSets.push(...normalize7tvEmotes(await readJson(global7tv)));
+  if (kickChannel?.user_id) {
+    const user7tv = await fetch("https://7tv.io/v3/users/kick/" + encodeURIComponent(kickChannel.user_id));
+    if (user7tv.ok) kickSets.push(...normalize7tvEmotes(await readJson(user7tv)));
+  }
+  result.kick = Array.from(new Map(kickSets.map((item) => [item.name, item])).values());
+  return result;
 }
