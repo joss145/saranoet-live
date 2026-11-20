@@ -316,8 +316,10 @@
 
     .visitor-send { margin-top: 14px; padding: 16px; border-top: 1px solid var(--line); }
     .visitor-send p { margin: 0 0 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .connect-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-    .connect-btn { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; color: #fff; background: #202820; font-weight: 800; cursor: pointer; }
+    .connect-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .connect-btn { min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: #f5edf9; background: #241a2c; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .18s ease, border-color .18s ease, opacity .18s ease; }
+    .connect-btn:hover:not(:disabled) { background: #33213f; border-color: #9b70b8; }
+    .connect-btn:disabled { opacity: .62; cursor: default; }
     .connect-btn.twitch { border-color: #6447a8; background: #241b38; }
     .connect-btn.kick { border-color: #347a25; background: #172b13; }
     .visitor-send label { display: block; margin: 0 0 7px; font-size: 12px; font-weight: 750; }
