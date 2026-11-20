@@ -223,21 +223,24 @@ async function getTwitchAppToken() {
   return cachedTwitchAppToken;
 }
 
-function normalize7tvEmotes(payload) {
-  const set = payload?.emote_set || payload?.data?.emote_set || payload?.emoteSet || payload;
-  const emotes = Array.isArray(set?.emotes) ? set.emotes : [];
-  return emotes.map((emote) => {
-    const host = emote.data?.host || emote.host;
-    const files = host?.files || [];
-    const preferred = files.find((file) => file.name === "2x.webp") ||
-      files.find((file) => file.name === "1x.webp") || files[0];
-    let image = "";
-    if (host?.url) {
-      const base = host.url.startsWith("//") ? "https:" + host.url : host.url;
-      image = base.replace(/\/$/, "") + "/" + (preferred?.name || "2x.webp");
-    }
-    return { name: emote.name || emote.data?.name || "", url: image, platform: "7tv" };
-  }).filter((emote) => emote.name && emote.url);
+function normalizeKickEmotes(payload) {
+  const candidates = [
+    payload?.data?.global,
+    payload?.global,
+    payload?.data?.globalEmotes,
+    payload?.globalEmotes,
+    payload?.data?.emotes,
+    payload?.emotes,
+    Array.isArray(payload?.data) ? payload.data : null,
+    Array.isArray(payload) ? payload : null
+  ];
+  const emotes = candidates.find(Array.isArray) || [];
+  return emotes.map((emote) => ({
+    name: emote.name || emote.code || emote.slug || "",
+    url: emote.image_url || emote.imageUrl || emote.url ||
+      (emote.id ? "https://files.kick.com/emotes/" + encodeURIComponent(emote.id) + "/fullsize" : ""),
+    platform: "kick"
+  })).filter((emote) => emote.name && emote.url);
 }
 
 let pickerEmoteCache = null;
@@ -248,9 +251,6 @@ async function loadPickerEmotes(db) {
   const result = { twitch: [], kick: [] };
   const { data: twitchChannel } = await db.from("platform_tokens")
     .select("user_id").eq("platform", "twitch").maybeSingle();
-  const { data: kickChannel } = await db.from("platform_tokens")
-    .select("user_id").eq("platform", "kick").maybeSingle();
-
   const twitchToken = await getTwitchAppToken();
   if (twitchToken) {
     const headers = {
@@ -275,14 +275,17 @@ async function loadPickerEmotes(db) {
     result.twitch = Array.from(new Map(result.twitch.map((item) => [item.name, item])).values());
   }
 
-  const kickSets = [];
-  const global7tv = await fetch("https://7tv.io/v3/emote-sets/global");
-  if (global7tv.ok) kickSets.push(...normalize7tvEmotes(await readJson(global7tv)));
-  if (kickChannel?.user_id) {
-    const user7tv = await fetch("https://7tv.io/v3/users/kick/" + encodeURIComponent(kickChannel.user_id));
-    if (user7tv.ok) kickSets.push(...normalize7tvEmotes(await readJson(user7tv)));
+  // Kick native global emotes only (no 7TV/BTTV/FFZ).
+  try {
+    const kickGlobalResponse = await fetch("https://kick.com/api/v2/emotes", {
+      headers: { "Accept": "application/json", "User-Agent": "SaraNoetLive/1.0" }
+    });
+    if (kickGlobalResponse.ok) {
+      result.kick = normalizeKickEmotes(await readJson(kickGlobalResponse));
+    }
+  } catch (error) {
+    console.error("Kick global emotes unavailable:", error?.message || "unknown error");
   }
-  result.kick = Array.from(new Map(kickSets.map((item) => [item.name, item])).values());
   pickerEmoteCache = result;
   pickerEmoteCacheExpiresAt = Date.now() + 10 * 60 * 1000;
   return result;
