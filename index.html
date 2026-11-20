@@ -453,12 +453,33 @@
         return row;
       }
 
+      function updateConnection(connection) {
+        const twitchButton = document.getElementById("connect-twitch");
+        const kickButton = document.getElementById("connect-kick");
+        if (!twitchButton || !kickButton) return;
+        twitchButton.disabled = false;
+        kickButton.disabled = false;
+        twitchButton.textContent = "Conectar con Twitch";
+        kickButton.textContent = "Conectar con Kick";
+        if (!connection) return;
+        if (connection.platform === "twitch") {
+          twitchButton.textContent = "✓ Conectado: @" + (connection.username || "Twitch");
+          kickButton.textContent = "Ya conectaste Twitch";
+          kickButton.disabled = true;
+        } else if (connection.platform === "kick") {
+          kickButton.textContent = "✓ Conectado: @" + (connection.username || "Kick");
+          twitchButton.textContent = "Ya conectaste Kick";
+          twitchButton.disabled = true;
+        }
+      }
+
       async function loadMessages() {
         try {
-          const response = await fetch("/api/chat/messages", { cache: "no-store" });
+          const response = await fetch("/api/chat/messages", { cache: "no-store", credentials: "same-origin" });
           if (!response.ok) throw new Error("HTTP " + response.status);
           const result = await response.json();
           const messages = Array.isArray(result.messages) ? result.messages : [];
+          updateConnection(result.connection || null);
           const signature = messages.map(m => m.id).join("|");
           if (signature !== newestSignature) {
             const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
