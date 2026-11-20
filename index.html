@@ -549,6 +549,16 @@
           const result = await response.json();
           const messages = Array.isArray(result.messages) ? result.messages : [];
           updateConnection(result.connection || null);
+          const incomingEmotes = result.emotes || {};
+          const nextEmoteSignature = JSON.stringify(incomingEmotes);
+          if (nextEmoteSignature !== emoteSignature) {
+            emoteSets = {
+              twitch: Array.isArray(incomingEmotes.twitch) ? incomingEmotes.twitch : [],
+              kick: Array.isArray(incomingEmotes.kick) ? incomingEmotes.kick : []
+            };
+            emoteSignature = nextEmoteSignature;
+            renderEmotePicker();
+          }
           const signature = messages.map(m => m.id).join("|");
           if (signature !== newestSignature) {
             const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
@@ -579,27 +589,40 @@
       const emoteGrid = document.getElementById("emote-grid");
       const emoteHelp = document.getElementById("emote-help");
       const emoteTabs = Array.from(document.querySelectorAll("[data-emote-platform]"));
-      const emoteSets = {
-        twitch: ["HeyGuys", "LUL", "Kappa", "PogChamp", "SeemsGood", "BibleThump", "VoHiYo", "Kreygasm", "NotLikeThis", "WutFace", "CoolStoryBob", "bleedPurple"],
-        kick: [":smile:", ":heart:", ":fire:", ":sad:"]
-      };
+      let emoteSets = { twitch: [], kick: [] };
+      let emoteSignature = "";
       let activeEmotePlatform = "twitch";
 
       function renderEmotePicker() {
         emoteGrid.replaceChildren();
         emoteTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.emotePlatform === activeEmotePlatform));
         emoteHelp.textContent = activeEmotePlatform === "twitch"
-          ? "Emotes globales de Twitch. Twitch solo mostrará los que tu cuenta tenga permitidos."
-          : "Ejemplos de códigos de emotes de Kick. Los emotes personalizados dependen de los disponibles en el canal.";
-        emoteSets[activeEmotePlatform].forEach(code => {
+          ? "Emotes globales y del canal de Twitch. La plataforma valida cuáles puede usar tu cuenta."
+          : "Emotes globales y del canal en 7TV. Al enviarlos a Kick, puede que el código se muestre como texto si Kick no reconoce ese emote.";
+        const emotes = emoteSets[activeEmotePlatform] || [];
+        if (!emotes.length) {
+          const empty = document.createElement("span");
+          empty.className = "emote-help";
+          empty.textContent = "Cargando emotes o no hay emotes disponibles.";
+          emoteGrid.appendChild(empty);
+        }
+        emotes.forEach(emote => {
           const button = document.createElement("button");
           button.type = "button";
           button.className = "emote-choice";
-          button.textContent = code;
-          button.title = "Insertar " + code;
+          button.title = "Insertar " + emote.name;
+          const image = document.createElement("img");
+          image.src = emote.url;
+          image.alt = emote.name;
+          image.loading = "lazy";
+          image.decoding = "async";
+          image.style.cssText = "width:auto;height:30px;max-width:76px;object-fit:contain;vertical-align:middle";
+          image.onerror = () => { image.replaceWith(document.createTextNode(emote.name)); };
+          button.appendChild(image);
           button.addEventListener("click", () => {
             const start = messageInput.selectionStart ?? messageInput.value.length;
             const end = messageInput.selectionEnd ?? messageInput.value.length;
+            const code = emote.name;
             const insertion = (start > 0 && !/\\s$/.test(messageInput.value.slice(0, start)) ? " " : "") + code + " ";
             messageInput.setRangeText(insertion, start, end, "end");
             messageInput.focus();
