@@ -78,6 +78,24 @@ async function sendVisitorMessage(req, res) {
     return res.status(401).json({ ok: false, error: "Conecta Twitch o Kick antes de escribir." });
   }
 
+  if (req.body?.action === "disconnect") {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(503).json({ ok: false, error: "El servicio no está configurado." });
+    }
+    try {
+      const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      const { error } = await db.from("visitor_platform_tokens").delete().eq("session_id", sessionId);
+      if (error) throw error;
+      recentSends.delete(sessionId);
+      return res.status(200).json({ ok: true, disconnected: true });
+    } catch (error) {
+      console.error("Visitor disconnect failed:", error?.message || "unknown error");
+      return res.status(500).json({ ok: false, error: "No se pudo desconectar la cuenta." });
+    }
+  }
+
   const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
   if (!message || message.length > 500) {
     return res.status(400).json({ ok: false, error: "El mensaje debe tener entre 1 y 500 caracteres." });
