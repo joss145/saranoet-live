@@ -418,6 +418,7 @@
         <div class="connect-row">
           <button class="connect-btn twitch" id="connect-twitch" type="button">Conectar con Twitch</button>
           <button class="connect-btn kick" id="connect-kick" type="button">Conectar con Kick</button>
+          <button class="connect-btn" id="disconnect-platform" type="button" hidden style="grid-column:1 / -1">Desconectar cuenta</button>
         </div>
         <label for="visitor-message">Tu mensaje</label>
         <div class="composer-tools"><button class="emote-toggle" id="emote-toggle" type="button" aria-expanded="false" aria-label="Abrir emotes">😊</button><span class="emote-help">Elige emotes de la plataforma a la que te conectaste.</span></div>
@@ -430,7 +431,7 @@
           <div class="emote-grid" id="emote-grid"></div>
         </div>
         <textarea id="visitor-message" maxlength="500" placeholder="Conecta Twitch o Kick para escribir..."></textarea>
-        <button class="send-btn" id="send-visitor-message" type="button">Enviar mensaje</button>
+        <button class="send-btn" id="send-visitor-message" type="button">Chat</button>
         <div id="visitor-send-status" class="unified-status" role="status">Conecta una cuenta para participar.</div>
       </div>
     </section>
@@ -525,11 +526,13 @@
       function updateConnection(connection) {
         const twitchButton = document.getElementById("connect-twitch");
         const kickButton = document.getElementById("connect-kick");
+        const disconnectButton = document.getElementById("disconnect-platform");
         if (!twitchButton || !kickButton) return;
         twitchButton.disabled = false;
         kickButton.disabled = false;
         twitchButton.textContent = "Conectar con Twitch";
         kickButton.textContent = "Conectar con Kick";
+        if (disconnectButton) disconnectButton.hidden = !connection;
         if (!connection) return;
         if (connection.platform === "twitch") {
           twitchButton.textContent = "✓ Conectado: @" + (connection.username || "Twitch");
@@ -584,6 +587,7 @@
       const messageInput = document.getElementById("visitor-message");
       const sendButton = document.getElementById("send-visitor-message");
       const sendStatus = document.getElementById("visitor-send-status");
+      const disconnectButton = document.getElementById("disconnect-platform");
       const emoteToggle = document.getElementById("emote-toggle");
       const emotePicker = document.getElementById("emote-picker");
       const emoteGrid = document.getElementById("emote-grid");
@@ -646,6 +650,28 @@
       });
       connectKick.addEventListener("click", () => {
         window.location.href = "/api/visitor/auth/kick";
+      });
+
+      disconnectButton.addEventListener("click", async () => {
+        disconnectButton.disabled = true;
+        sendStatus.textContent = "Desconectando cuenta...";
+        try {
+          const response = await fetch("/api/chat/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ action: "disconnect" })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo desconectar.");
+          updateConnection(null);
+          sendStatus.textContent = "Cuenta desconectada. Ahora puedes conectar Twitch o Kick.";
+          await loadMessages();
+        } catch (error) {
+          sendStatus.textContent = error.message || "No se pudo desconectar la cuenta.";
+        } finally {
+          disconnectButton.disabled = false;
+        }
       });
 
       sendButton.addEventListener("click", async () => {
