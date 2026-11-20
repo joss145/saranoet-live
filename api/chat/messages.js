@@ -222,7 +222,11 @@ function normalize7tvEmotes(payload) {
   }).filter((emote) => emote.name && emote.url);
 }
 
+let pickerEmoteCache = null;
+let pickerEmoteCacheExpiresAt = 0;
+
 async function loadPickerEmotes(db) {
+  if (pickerEmoteCache && pickerEmoteCacheExpiresAt > Date.now()) return pickerEmoteCache;
   const result = { twitch: [], kick: [] };
   const { data: twitchChannel } = await db.from("platform_tokens")
     .select("user_id").eq("platform", "twitch").maybeSingle();
@@ -261,5 +265,7 @@ async function loadPickerEmotes(db) {
     if (user7tv.ok) kickSets.push(...normalize7tvEmotes(await readJson(user7tv)));
   }
   result.kick = Array.from(new Map(kickSets.map((item) => [item.name, item])).values());
+  pickerEmoteCache = result;
+  pickerEmoteCacheExpiresAt = Date.now() + 10 * 60 * 1000;
   return result;
 }
