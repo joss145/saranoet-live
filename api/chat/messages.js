@@ -224,23 +224,29 @@ async function getTwitchAppToken() {
 }
 
 function normalizeKickEmotes(payload) {
+  const data = payload?.data ?? payload;
   const candidates = [
-    payload?.data?.global,
-    payload?.global,
-    payload?.data?.globalEmotes,
-    payload?.globalEmotes,
-    payload?.data?.emotes,
-    payload?.emotes,
-    Array.isArray(payload?.data) ? payload.data : null,
+    data?.global,
+    data?.global_emotes,
+    data?.globalEmotes,
+    data?.channel,
+    data?.channel_emotes,
+    data?.channelEmotes,
+    data?.emotes,
+    data?.emoji,
+    Array.isArray(data) ? data : null,
     Array.isArray(payload) ? payload : null
   ];
-  const emotes = candidates.find(Array.isArray) || [];
-  return emotes.map((emote) => ({
-    name: emote.name || emote.code || emote.slug || "",
-    url: emote.image_url || emote.imageUrl || emote.url ||
-      (emote.id ? "https://files.kick.com/emotes/" + encodeURIComponent(emote.id) + "/fullsize" : ""),
-    platform: "kick"
-  })).filter((emote) => emote.name && emote.url);
+  const emotes = candidates.filter(Array.isArray).flat();
+  const unique = new Map();
+  for (const emote of emotes) {
+    const name = emote?.name || emote?.code || emote?.slug || "";
+    const id = emote?.id || emote?.emote_id;
+    const url = emote?.image_url || emote?.imageUrl || emote?.image ||
+      emote?.url || (id ? "https://files.kick.com/emotes/" + encodeURIComponent(id) + "/fullsize" : "");
+    if (name && url) unique.set(name, { name, url, platform: "kick" });
+  }
+  return Array.from(unique.values());
 }
 
 let pickerEmoteCache = null;
@@ -275,16 +281,15 @@ async function loadPickerEmotes(db) {
     result.twitch = Array.from(new Map(result.twitch.map((item) => [item.name, item])).values());
   }
 
-  // Kick native global emotes only (no 7TV/BTTV/FFZ).
+  // Kick native emotes: the website exposes global + channel sets by channel slug.
   try {
-    const kickGlobalResponse = await fetch("https://kick.com/api/v2/emotes", {
-      headers: { "Accept": "application/json", "User-Agent": "SaraNoetLive/1.0" }
+    const kickEmoteResponse = await fetch("https://kick.com/api/v2/emotes/saranoet", {
+      headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0" }
     });
-    if (kickGlobalResponse.ok) {
-      result.kick = normalizeKickEmotes(await readJson(kickGlobalResponse));
-    }
+    if (!kickEmoteResponse.ok) throw new Error("Kick emotes endpoint returned " + kickEmoteResponse.status);
+    result.kick = normalizeKickEmotes(await readJson(kickEmoteResponse));
   } catch (error) {
-    console.error("Kick global emotes unavailable:", error?.message || "unknown error");
+    console.error("Kick native emotes unavailable:", error?.message || "unknown error");
   }
   pickerEmoteCache = result;
   pickerEmoteCacheExpiresAt = Date.now() + 10 * 60 * 1000;
