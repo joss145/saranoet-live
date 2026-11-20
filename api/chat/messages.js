@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   const { data, error } = await supabase
     .from("chat_messages")
-    .select("id, platform, username, content, sent_at")
+    .select("id, platform, username, content, emotes, sent_at")
     .order("sent_at", { ascending: true })
     .limit(100);
 
