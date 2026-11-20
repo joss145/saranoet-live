@@ -325,6 +325,16 @@
     .visitor-send textarea:disabled { opacity: .6; }
     .send-btn { width: 100%; min-height: 42px; margin-top: 10px; border: 0; border-radius: 10px; color: #071006; background: var(--green); font-weight: 900; cursor: pointer; }
     @media (max-width: 420px) { .connect-row { grid-template-columns: 1fr; } }
+    .composer-tools { display:flex; align-items:center; gap:8px; margin: 0 0 8px; }
+    .emote-toggle { border:1px solid var(--line); border-radius:9px; background:#202820; color:#fff; padding:8px 12px; cursor:pointer; font-size:18px; }
+    .emote-picker { display:none; margin:0 0 10px; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111813; }
+    .emote-picker.open { display:block; }
+    .emote-tabs { display:flex; gap:8px; margin-bottom:10px; }
+    .emote-tab { border:1px solid var(--line); border-radius:8px; background:#202820; color:#fff; padding:7px 12px; cursor:pointer; font-weight:750; }
+    .emote-tab.active { border-color:var(--green); color:var(--green); }
+    .emote-grid { display:flex; flex-wrap:wrap; gap:7px; }
+    .emote-choice { border:1px solid var(--line); border-radius:8px; background:#202820; color:#fff; padding:7px 9px; cursor:pointer; }
+    .emote-help { color:var(--muted); font-size:11px; margin:0 0 9px; }
 
   </style>
 </head>
@@ -410,6 +420,15 @@
           <button class="connect-btn kick" id="connect-kick" type="button">Conectar con Kick</button>
         </div>
         <label for="visitor-message">Tu mensaje</label>
+        <div class="composer-tools"><button class="emote-toggle" id="emote-toggle" type="button" aria-expanded="false" aria-label="Abrir emotes">😊</button><span class="emote-help">Elige emotes de la plataforma a la que te conectaste.</span></div>
+        <div class="emote-picker" id="emote-picker">
+          <div class="emote-tabs">
+            <button class="emote-tab active" type="button" data-emote-platform="twitch">Twitch</button>
+            <button class="emote-tab" type="button" data-emote-platform="kick">Kick</button>
+          </div>
+          <p class="emote-help" id="emote-help">Emotes globales de Twitch. La plataforma valida cuáles puedes usar.</p>
+          <div class="emote-grid" id="emote-grid"></div>
+        </div>
         <textarea id="visitor-message" maxlength="500" placeholder="Conecta Twitch o Kick para escribir..."></textarea>
         <button class="send-btn" id="send-visitor-message" type="button">Enviar mensaje</button>
         <div id="visitor-send-status" class="unified-status" role="status">Conecta una cuenta para participar.</div>
@@ -555,6 +574,49 @@
       const messageInput = document.getElementById("visitor-message");
       const sendButton = document.getElementById("send-visitor-message");
       const sendStatus = document.getElementById("visitor-send-status");
+      const emoteToggle = document.getElementById("emote-toggle");
+      const emotePicker = document.getElementById("emote-picker");
+      const emoteGrid = document.getElementById("emote-grid");
+      const emoteHelp = document.getElementById("emote-help");
+      const emoteTabs = Array.from(document.querySelectorAll("[data-emote-platform]"));
+      const emoteSets = {
+        twitch: ["HeyGuys", "LUL", "Kappa", "PogChamp", "SeemsGood", "BibleThump", "VoHiYo", "Kreygasm", "NotLikeThis", "WutFace", "CoolStoryBob", "bleedPurple"],
+        kick: [":smile:", ":heart:", ":fire:", ":sad:"]
+      };
+      let activeEmotePlatform = "twitch";
+
+      function renderEmotePicker() {
+        emoteGrid.replaceChildren();
+        emoteTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.emotePlatform === activeEmotePlatform));
+        emoteHelp.textContent = activeEmotePlatform === "twitch"
+          ? "Emotes globales de Twitch. Twitch solo mostrará los que tu cuenta tenga permitidos."
+          : "Ejemplos de códigos de emotes de Kick. Los emotes personalizados dependen de los disponibles en el canal.";
+        emoteSets[activeEmotePlatform].forEach(code => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "emote-choice";
+          button.textContent = code;
+          button.title = "Insertar " + code;
+          button.addEventListener("click", () => {
+            const start = messageInput.selectionStart ?? messageInput.value.length;
+            const end = messageInput.selectionEnd ?? messageInput.value.length;
+            const insertion = (start > 0 && !/\\s$/.test(messageInput.value.slice(0, start)) ? " " : "") + code + " ";
+            messageInput.setRangeText(insertion, start, end, "end");
+            messageInput.focus();
+          });
+          emoteGrid.appendChild(button);
+        });
+      }
+
+      emoteToggle.addEventListener("click", () => {
+        const open = emotePicker.classList.toggle("open");
+        emoteToggle.setAttribute("aria-expanded", String(open));
+      });
+      emoteTabs.forEach(tab => tab.addEventListener("click", () => {
+        activeEmotePlatform = tab.dataset.emotePlatform;
+        renderEmotePicker();
+      }));
+      renderEmotePicker();
 
       connectTwitch.addEventListener("click", () => {
         window.location.href = "/api/visitor/auth/twitch";
