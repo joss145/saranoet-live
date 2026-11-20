@@ -20,7 +20,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Could not load chat messages" });
   }
 
-  return res.status(200).json({ messages: data || [] });
+  let connection = null;
+  const sessionId = parseCookies(req.headers.cookie).visitor_session || "";
+  if (/^[a-f0-9]{64}$/i.test(sessionId) && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const { data: visitor } = await db.from("visitor_platform_tokens")
+      .select("platform,username,expires_at")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+    if (visitor && (!visitor.expires_at || new Date(visitor.expires_at).getTime() > Date.now())) {
+      connection = { platform: visitor.platform, username: visitor.username };
+    }
+  }
+
+  return res.status(200).json({ messages: data || [], connection });
 }
 
 
