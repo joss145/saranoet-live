@@ -59,11 +59,19 @@ export default async function handler(req, res) {
   const content = event.message?.text;
   if (!messageId || !username || typeof content !== "string") return res.status(204).end();
 
+  const emotes = (event.message?.fragments || []).map((fragment) => {
+    if (fragment.type === "emote" && fragment.emote?.id) {
+      return { type: "emote", text: fragment.text || "", id: String(fragment.emote.id), format: fragment.emote.format || ["static"] };
+    }
+    return { type: "text", text: fragment.text || "" };
+  });
+
   const { error } = await supabase.from("chat_messages").upsert({
     platform: "twitch",
     external_message_id: String(messageId),
     username: String(username),
     content,
+    emotes,
     sent_at: event.message?.sent_at || new Date().toISOString()
   }, { onConflict: "platform,external_message_id", ignoreDuplicates: true });
 
