@@ -69,11 +69,20 @@ export default async function handler(req, res) {
   const content = payload.content;
   if (!messageId || !username || typeof content !== "string") return res.status(204).end();
 
+  const emotes = Array.isArray(payload.emotes) ? payload.emotes.map((emote) => ({
+    id: String(emote.emote_id || ""),
+    positions: Array.isArray(emote.positions) ? emote.positions.map((position) => ({
+      start: Number(position.s),
+      end: Number(position.e)
+    })).filter((position) => Number.isInteger(position.start) && Number.isInteger(position.end)) : []
+  })).filter((emote) => emote.id && emote.positions.length) : [];
+
   const { error } = await supabase.from("chat_messages").upsert({
     platform: "kick",
     external_message_id: String(messageId),
     username: String(username),
     content,
+    emotes,
     sent_at: payload.created_at || new Date().toISOString()
   }, { onConflict: "platform,external_message_id", ignoreDuplicates: true });
 
