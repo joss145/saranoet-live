@@ -602,7 +602,7 @@
         emoteTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.emotePlatform === activeEmotePlatform));
         emoteHelp.textContent = activeEmotePlatform === "twitch"
           ? "Emotes globales y del canal de Twitch. La plataforma valida cuáles puede usar tu cuenta."
-          : "Emotes globales y del canal en 7TV. Al enviarlos a Kick, puede que el código se muestre como texto si Kick no reconoce ese emote.";
+          : "Emotes globales nativos de Kick. Solo se mostrarán los emotes oficiales que Kick devuelva.";
         const emotes = emoteSets[activeEmotePlatform] || [];
         if (!emotes.length) {
           const empty = document.createElement("span");
